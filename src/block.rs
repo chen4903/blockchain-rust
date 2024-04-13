@@ -1,27 +1,33 @@
-use data_encoding::HEXLOWER;
-use ring::digest::{Context, SHA256};
-use core::time;
-use std::{thread::current, time::{SystemTime, UNIX_EPOCH}};
+use crate::proof_of_work::ProofOfWork;
+use std::time::{SystemTime, UNIX_EPOCH};
 
+#[derive(Clone)]
 pub struct Block {
     timestamp: i64,
     pre_block_hash: String,
     hash: String, 
-    data: String
+    data: String,
+    nonce: i64
 }
 
 impl Block {
 
     pub fn new_block(pre_block_hash: String, data: String) -> Block{
-        let timestamp = current_timestamp();
-        let hash = caculate_hash(timestamp, pre_block_hash.clone(), data.clone());
-
-        Block {
-            timestamp,
+        let mut block = Block {
+            timestamp: current_timestamp(),
             pre_block_hash,
-            hash,
-            data
-        }
+            hash: String::new(),
+            data,
+            nonce: 0
+        };
+
+        // After create the block, we should execute PoW to make it valid
+        let pow = ProofOfWork::new_pow(block.clone());
+        let (nonce, hash) = pow.run();
+        block.nonce = nonce;
+        block.hash = hash;
+
+        return block;
     }
 
     pub fn new_genesis_block() -> Block {
@@ -45,26 +51,12 @@ impl Block {
     }
 }
 
+/// @dev Get the current time of unix
 fn current_timestamp() -> i64 {
     return SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .expect("Time went backwards")
         .as_millis() as i64;
-    // .as_millis() as i64: as_millis() 是 Duration 类型的一个方法，用于获取时间间隔的毫秒数部分。
-    // 由于返回类型是 u128，但我们需要的是 i64 类型的时间戳，因此使用 as 关键字进行类型转换
-}
-
-fn caculate_hash(timestamp: i64, pre_block_hash: String, data: String) -> String {
-    let block_data = format!("{}{}{}", timestamp, pre_block_hash, data);
-
-    return sha256_digest(block_data);
-}
-
-fn sha256_digest(block_data: String) -> String { // SHA2-256
-    let mut context = Context::new(&SHA256);
-    context.update(block_data.as_bytes());
-    let digest = context.finish();
-    return HEXLOWER.encode(digest.as_ref());
 }
 
 #[cfg(test)]
@@ -74,15 +66,10 @@ mod tests {
     #[test]
     fn test_new_block() {
         let block = Block::new_block(
-            "lsfdjfjsdlfjsdlfsjdlk".to_string(), 
-            "hello".to_string()
+            String::from("2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"),
+            String::from("ABC"),
         );
-        println!("new block hash is {}", block.hash);
+        println!("new block hash is {}", block.hash) 
     }
 
-    #[test]
-    fn test_sha3_256_digest() {
-        let digest = super::sha256_digest("world".to_string());
-        println!("SHA3-256 digest is {}", digest);
-    }
 }
