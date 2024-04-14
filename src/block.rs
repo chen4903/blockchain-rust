@@ -1,7 +1,9 @@
 use crate::proof_of_work::ProofOfWork;
 use std::time::{SystemTime, UNIX_EPOCH};
+use serde::{Deserialize, Serialize};
+use sled::IVec;
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Block {
     timestamp: i64,
     pre_block_hash: String,
@@ -30,6 +32,11 @@ impl Block {
         return block;
     }
 
+    /// @dev Deserializing from a byte array
+    pub fn deserialize(bytes: &[u8]) -> Block {
+        return bincode::deserialize(bytes).unwrap();
+    }
+
     pub fn new_genesis_block() -> Block {
         return Block::new_block(String::new(), String::from("Genesis Block"));
     }
@@ -48,6 +55,13 @@ impl Block {
 
     pub fn get_timestamp(&self) -> i64 {
         return self.timestamp.clone();
+    }
+}
+
+impl From<Block> for IVec {
+    fn from(b: Block) -> Self {
+        let bytes = bincode::serialize(&b).unwrap();
+        Self::from(bytes)
     }
 }
 
@@ -70,6 +84,18 @@ mod tests {
             String::from("ABC"),
         );
         println!("new block hash is {}", block.hash) 
+    }
+
+    #[test]
+    fn test_serialize() {
+        let block = Block::new_block(
+            "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824".to_string(), 
+            String::from("LEVI_104")
+        );
+        let bytes = bincode::serialize(&block).unwrap();
+        let desc_block = Block::deserialize(&bytes);
+        assert_eq!(block.data, desc_block.data);
+
     }
 
 }
