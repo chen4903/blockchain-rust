@@ -50,7 +50,7 @@ impl ProofOfWork {
         while nonce < MAX_NONCE {
             let data = self.prepare_data(nonce);
             hash = sha256_digest(data.as_slice());
-            // @dev We use BigInt type to represent difficulty, because maybe it will be very large 
+            // We use BigInt type to represent difficulty, because maybe it will be very large 
             // from_bytes_be: translate big-endian bytes order into BigInt
             // Sign::Plus: the BigInt will be noted as positive number
             let hash_int = BigInt::from_bytes_be(Sign::Plus, hash.as_slice());

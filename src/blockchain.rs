@@ -43,7 +43,7 @@ impl BlockChainIterator {
 impl BlockChain {
     /// @dev When we create a new blockchain, its data will be store in the current directory
     pub fn new_blockchain() -> BlockChain {
-        // db is None or fill with data
+        // init the db
         let db = sled::open(current_dir().unwrap().join("data")).unwrap();
         // get the data from database
         let data = db.get(CURRENT_HASH_POINTER).unwrap();
