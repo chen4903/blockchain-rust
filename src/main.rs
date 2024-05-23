@@ -1,3 +1,5 @@
+use std::fs;
+
 use blockchain_rust::BlockChain;
 use structopt::StructOpt;
 
@@ -17,6 +19,8 @@ enum Command {
     },
     #[structopt(name = "printchain", about = "Print blockchain all block")]
     Printchain,
+    #[structopt(name = "deletechain", about = "Delete exist blockchain")]
+    Deletechain,
 }
 
 fn main() {
@@ -38,6 +42,13 @@ fn main() {
                 println!("Cur block hash: {}", block.get_hash());
                 println!("Data: {}", block.get_data());
                 println!("Timestamp: {}\n", block.get_timestamp());
+            }
+        }
+        Command::Deletechain  => {
+            let result = fs::remove_dir_all("data");
+            match result {
+                Ok(()) => println!("Delete exist blockchain successfully!"),
+                Err(err) => eprintln!("Delete exist blockchain fail: {:?}", err),
             }
         }
     }
