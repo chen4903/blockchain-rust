@@ -10,13 +10,13 @@ pub struct ProofOfWork{
     target: BigInt,
 }
 
-const TARGET_BIGS: i32 = 20; // difficulty
+const TARGET_BITS: i32 = 20; // difficulty
 const MAX_NONCE: i64 = i64::MAX; // To prevent nonce overflow
 
 impl ProofOfWork {
     pub fn new_pow(block: Block) -> ProofOfWork {
         let mut target = BigInt::from(1);
-        target.shl_assign(256 - TARGET_BIGS); // target is equal to 1 << TARGET_BITS
+        target.shl_assign(256 - TARGET_BITS); // target is equal to 1 << TARGET_BITS
         ProofOfWork{
             block,
             target
@@ -25,17 +25,15 @@ impl ProofOfWork {
 
     /// @dev The data will be used in PoW
     fn prepare_data(&self, nonce: i64) -> Vec<u8> {
-        let mut data_bytes = Vec::new();
-
         let pre_block_hash = self.block.get_pre_block_hash();
-        let data = self.block.get_data();
+        let transactions_hash = self.block.hash_transactions();
         let timestamp = self.block.get_timestamp();
         
+        let mut data_bytes = vec![];
         data_bytes.extend(pre_block_hash.as_bytes());
-        data_bytes.extend(data.as_bytes());
-        // to_be_bytes: A method for integer types, used to convert Integer into big-endian byte order
-        data_bytes.extend(timestamp.to_be_bytes()); 
-        data_bytes.extend(TARGET_BIGS.to_be_bytes());
+        data_bytes.extend(transactions_hash);
+        data_bytes.extend(timestamp.to_be_bytes());
+        data_bytes.extend(TARGET_BITS.to_be_bytes());
         data_bytes.extend(nonce.to_be_bytes());
 
         return data_bytes;
@@ -45,7 +43,7 @@ impl ProofOfWork {
     pub fn run(&self) -> (i64, String) {
         let mut nonce = 0;
         let mut hash = Vec::new();
-        println!("⛏️  Start mining👷, the block contains [{}] ", self.block.get_data());
+        println!("⛏️  Start mining👷, the block contains [{:?}] ", self.block.get_transactions());
 
         while nonce < MAX_NONCE {
             let data = self.prepare_data(nonce);
@@ -78,7 +76,7 @@ fn sha256_digest(block_data: &[u8]) -> Vec<u8> {
 
 #[cfg(test)]
 mod tests{
-    use super::TARGET_BIGS;
+    use super::TARGET_BITS;
     use data_encoding::HEXLOWER;
     use num_bigint::BigInt;
     use std::ops::ShlAssign;
@@ -104,7 +102,7 @@ mod tests{
     #[test]
     fn test_target_bits() {
         let mut target = BigInt::from(1);
-        target.shl_assign(256 - TARGET_BIGS);
+        target.shl_assign(256 - TARGET_BITS);
         println!("{}", target); // output: 110427941548649020598956093796432407239217743554726184882600387580788736
 
         let (_, vec) = target.to_bytes_be();
