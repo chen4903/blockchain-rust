@@ -2,7 +2,7 @@ use ring::digest::{Context, SHA256};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Get current time
-pub fn current_timestamp() -> i64{
+pub fn current_timestamp() -> i64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .expect("Time went backwards")

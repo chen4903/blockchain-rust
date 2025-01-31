@@ -1,10 +1,10 @@
 use crate::block::Block;
 use crate::transaction::TXOutput;
+use crate::transaction::Transaction;
+use data_encoding::HEXLOWER;
 use sled::Db;
 use std::collections::HashMap;
-use data_encoding::HEXLOWER;
 use std::env::current_dir; // to get the current directory
-use crate::transaction::Transaction;
 
 // it pointes to the latest block hash, so that we can search for any block
 const TIP_BLOCK_HASH_KEY: &str = "tip_block_hash";
@@ -14,11 +14,11 @@ const GENESIS_COINBASE_DATA: &str =
 
 pub struct BlockChain {
     tip: String, // the newest block's hash
-    db: Db, // to store data, use third-party crate: sled::Db
+    db: Db,      // to store data, use third-party crate: sled::Db
 }
 
 impl BlockChain {
-    /// @dev When we create a new blockchain, its data will be store in the current directory
+    /// When we create a new blockchain, its data will be store in the current directory
     pub fn new_blockchain() -> BlockChain {
         // init the db
         let db = sled::open(current_dir().unwrap().join("data")).unwrap();
@@ -26,7 +26,8 @@ impl BlockChain {
         let data = db.get(TIP_BLOCK_HASH_KEY).unwrap();
         let tip; // current hash
 
-        if data.is_none() { // If it is the first time to init the blockchain
+        if data.is_none() {
+            // If it is the first time to init the blockchain
             let coinbase_tx = Transaction::new_coinbase_tx(
                 String::from(GENESIS_ADDRESS),
                 String::from(GENESIS_COINBASE_DATA),
@@ -42,7 +43,7 @@ impl BlockChain {
             tip = String::from_utf8(data.unwrap().to_vec()).unwrap();
         }
 
-        return BlockChain{tip, db}
+        return BlockChain { tip, db };
     }
 
     pub fn mine_block(&mut self, transactions: Vec<Transaction>) {
@@ -53,7 +54,9 @@ impl BlockChain {
         // update the block into our database
         let _ = self.db.insert(block_hash.clone(), block);
         // update the current hash pointer
-        let _ = self.db.insert(TIP_BLOCK_HASH_KEY, block_hash.as_bytes().to_vec());
+        let _ = self
+            .db
+            .insert(TIP_BLOCK_HASH_KEY, block_hash.as_bytes().to_vec());
         self.tip = block_hash;
     }
 
@@ -75,32 +78,34 @@ impl BlockChain {
 
         let mut block_iterator = self.new_iterator();
         loop {
+            // The meaning of 'next' here is to traverse the block from back to front
             let block = block_iterator.next();
+            // If there is no block any more, we jump out the loop
             if block.is_none() {
                 break;
             }
+            // Get all transactions in the block
             for tx in block.unwrap().get_transactions() {
                 let txid_hex = HEXLOWER.encode(tx.get_id().as_slice());
                 let txout = tx.get_vout();
 
-                'outer:
-                    for idx in 0..txout.len() {
-                        let txout = txout[idx].clone();
+                'outer: for idx in 0..txout.len() {
+                    let txout = txout[idx].clone();
 
-                        // filter spent outputs
-                        if spent_txos.contains_key(txid_hex.as_str()) {
-                            let outs = spent_txos.get(txid_hex.as_str()).unwrap();
-                            for out in outs {
-                                if out.eq(&(idx as i32)) {
-                                    continue 'outer;
-                                }
+                    // filter spent outputs
+                    if spent_txos.contains_key(txid_hex.as_str()) {
+                        let outs = spent_txos.get(txid_hex.as_str()).unwrap();
+                        for out in outs {
+                            if out.eq(&(idx as i32)) {
+                                continue 'outer;
                             }
                         }
-                        if txout.can_be_unlocked_with(address) {
-                            unspent_txs.push(tx.clone())
-                        }
                     }
-                
+                    if txout.can_be_unlocked_with(address) {
+                        unspent_txs.push(tx.clone())
+                    }
+                }
+
                 if tx.is_coinbase() {
                     continue;
                 }
@@ -133,24 +138,23 @@ impl BlockChain {
         }
         return utxos;
     }
-
 }
 
-/// @dev Help to iterate the blockchain
-pub struct BlockChainIterator{
+/// Help to iterate the blockchain
+pub struct BlockChainIterator {
     current_hash: String,
     db: Db,
 }
 
 impl BlockChainIterator {
-    fn new(tip: String, db: Db) -> BlockChainIterator{
+    fn new(tip: String, db: Db) -> BlockChainIterator {
         BlockChainIterator {
             current_hash: tip,
-            db
+            db,
         }
     }
 
-    /// @dev next() means starting from the latest block and tracing back to the Genesis block
+    /// `next()`` means starting from the latest block and tracing back to the Genesis block
     pub fn next(&mut self) -> Option<Block> {
         // we can get the data by hash in the database
         let data = self.db.get(self.current_hash.clone()).unwrap();
@@ -166,17 +170,26 @@ impl BlockChainIterator {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
-    use std::env::current_dir;
     use crate::transaction::Transaction;
+    use std::env::current_dir;
 
     #[test]
     fn test_block_chain() {
         let mut blockchain = super::BlockChain::new_blockchain();
         let transaction = Transaction::new_coinbase_tx(String::from("mars"), String::from("miko"));
         blockchain.mine_block(vec![transaction]);
+    }
+
+    #[test]
+    fn test_find_unspent_transactions() {
+        let blockchain = super::BlockChain::new_blockchain();
+        let transactions = blockchain.find_unspent_transactions("mars");
+        for tx in transactions {
+            let txid_hex = super::HEXLOWER.encode(tx.get_id().as_slice());
+            println!("tx = {}", txid_hex);
+        }
     }
 
     #[test]

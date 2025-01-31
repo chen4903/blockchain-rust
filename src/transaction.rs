@@ -1,19 +1,18 @@
 use data_encoding::HEXLOWER;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use crate::utils::sha256_digest;
 
 const SUBSIDY: i32 = 10;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TXInput {
-    txid: Vec<u8>,      // A transaction input refers to an output of a previous transaction, 
-                        // and the ID indicates which previous transaction it was
+    txid: Vec<u8>, // A transaction input refers to an output of a previous transaction,
+    // and the ID indicates which previous transaction it was
     vout: i32,          // output index
     script_sig: String, // unlocking output data
 }
 
-impl TXInput{
+impl TXInput {
     pub fn can_unlock_output_with(&self, unlocking_data: &str) -> bool {
         self.script_sig.eq(unlocking_data)
     }
@@ -33,7 +32,7 @@ impl TXInput{
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TXOutput {
-    value: i32,           
+    value: i32,
     script_pub_key: String,
 }
 
@@ -60,12 +59,12 @@ impl TXOutput {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Transaction {
-    id: Vec<u8>,         //
+    id: Vec<u8>,
     vin: Vec<TXInput>,   // input
     vout: Vec<TXOutput>, // output
 }
 
-impl Transaction{
+impl Transaction {
     /// create a coinbase transaction, no input, one output
     pub fn new_coinbase_tx(to: String, mut data: String) -> Transaction {
         if data.len() == 0 {
@@ -75,7 +74,7 @@ impl Transaction{
         let txin = TXInput {
             txid: vec![],
             vout: -1,
-            script_sig: data,
+            script_sig: "coinbase".to_string(),
         };
         let txout = TXOutput {
             value: SUBSIDY,
@@ -98,7 +97,7 @@ impl Transaction{
 
     fn set_id(&mut self) {
         let data = bincode::serialize(self).unwrap();
-        self.id = sha256_digest(data.as_slice());
+        self.id = crate::sha256_digest(data.as_slice());
     }
 
     pub fn get_id(&self) -> Vec<u8> {
@@ -152,7 +151,7 @@ impl Transaction{
                     }
                 }
             }
-        
+
         if accumulated < amount {
             panic!("Error: Not enough funds")
         }
@@ -170,10 +169,10 @@ impl Transaction{
                 inputs.push(input);
             }
         }
-        
+
         // assemble our output
         let mut outputs = vec![TXOutput::new(amount, to.clone())];
-        // If the total number of UTXO exceeds the required amount, change will be generated
+        // If the total number of UTXO exceeds the required amount, change will be generated: send to myself
         if accumulated > amount {
             outputs.push(TXOutput::new(accumulated - amount, from))
         }
@@ -182,10 +181,28 @@ impl Transaction{
             vin: inputs,
             vout: outputs,
         };
-       
 
         tx.set_id();
         return tx;
     }
+}
 
+#[cfg(test)]
+mod tests {
+    use crate::Transaction;
+    use data_encoding::HEXLOWER;
+
+    #[test]
+    fn new_coinbase_tx() {
+        let tx = Transaction::new_coinbase_tx("to".to_string(), "data".to_string());
+        let txid_hex = HEXLOWER.encode(tx.get_id().as_slice());
+        println!("txid = {}", txid_hex);
+        assert_eq!(tx.vin.len(), 1);
+        assert_eq!(tx.vout.len(), 1);
+        assert_eq!(tx.vin[0].txid.len(), 0);
+        assert_eq!(tx.vin[0].vout, -1);
+        assert_eq!(tx.vin[0].script_sig, "coinbase");
+        assert_eq!(tx.vout[0].value, 10);
+        assert_eq!(tx.vout[0].script_pub_key, "to");
+    }
 }

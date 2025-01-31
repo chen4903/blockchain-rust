@@ -16,14 +16,14 @@ const MAX_NONCE: i64 = i64::MAX; // To prevent nonce overflow
 impl ProofOfWork {
     pub fn new_pow(block: Block) -> ProofOfWork {
         let mut target = BigInt::from(1);
-        target.shl_assign(256 - TARGET_BITS); // target is equal to 1 << TARGET_BITS
+        target.shl_assign(256 - TARGET_BITS); // target is equal to `1 << TARGET_BITS`
         ProofOfWork{
             block,
             target
         }
     }
 
-    /// @dev The data will be used in PoW
+    /// The data will be used in PoW
     fn prepare_data(&self, nonce: i64) -> Vec<u8> {
         let pre_block_hash = self.block.get_pre_block_hash();
         let transactions_hash = self.block.hash_transactions();
@@ -39,7 +39,7 @@ impl ProofOfWork {
         return data_bytes;
     }
 
-    /// @dev To find the valid hash
+    /// To find the valid hash
     pub fn run(&self) -> (i64, String) {
         let mut nonce = 0;
         let mut hash = Vec::new();
@@ -47,7 +47,7 @@ impl ProofOfWork {
 
         while nonce < MAX_NONCE {
             let data = self.prepare_data(nonce);
-            hash = sha256_digest(data.as_slice());
+            hash = crate::sha256_digest(data.as_slice());
             // We use BigInt type to represent difficulty, because maybe it will be very large 
             // from_bytes_be: translate big-endian bytes order into BigInt
             // Sign::Plus: the BigInt will be noted as positive number
@@ -66,14 +66,6 @@ impl ProofOfWork {
     }
 }
 
-/// @dev SHA2-256
-fn sha256_digest(block_data: &[u8]) -> Vec<u8> {
-    let mut context = Context::new(&SHA256);
-    context.update(block_data);
-    let digest = context.finish();
-    return digest.as_ref().to_vec();
-}
-
 #[cfg(test)]
 mod tests{
     use super::TARGET_BITS;
@@ -83,14 +75,14 @@ mod tests{
 
     #[test]
     fn test_sha256_digest() {
-        let digest = super::sha256_digest("hello".as_bytes());
+        let digest = crate::sha256_digest("hello".as_bytes());
         let hex_digest = HEXLOWER.encode(&digest.as_slice());
         println!("SHA-256 digest is {}", hex_digest);
     }
 
     #[test]
     fn test_bigint_from_bytes() {
-        let a = BigInt::from(2562);
+        let a = BigInt::from(256);
         let (s, vec) = a.to_bytes_be();
         println!("{:?}, {:?}", s, vec);
 

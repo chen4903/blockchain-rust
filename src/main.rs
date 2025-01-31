@@ -1,7 +1,7 @@
 use blockchain_rust::BlockChain;
+use blockchain_rust::Transaction;
 use data_encoding::HEXLOWER;
 use structopt::StructOpt;
-use blockchain_rust::Transaction;
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = "blockchain_rust")]
